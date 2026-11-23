@@ -1,10 +1,23 @@
 
-def seleccionar_semaforo(vehiculos):
+def seleccionar_semaforo(vehiculos, tiempos_espera):
     """
-    Selecciona la dirección con mayor cantidad
-    de vehículos esperando.
+    Selecciona la dirección con mayor puntuación.
+
+    Considera tanto la cantidad de vehículos
+    como el tiempo que llevan esperando.
     """
 
-    direccion = max(vehiculos, key=vehiculos.get)
+    puntuaciones = {}
+
+    for direccion in vehiculos:
+
+        puntuacion = (
+            vehiculos[direccion]
+            + tiempos_espera[direccion] * 2
+        )
+
+        puntuaciones[direccion] = puntuacion
+
+    direccion = max(puntuaciones, key=puntuaciones.get)
 
     return direccion
