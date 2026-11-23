@@ -1,108 +1,74 @@
-const valoresIniciales = {
-    norte: 12,
-    sur: 5,
-    este: 18,
-    oeste: 7
-};
+//Estado de la aplicacion
+let estadoActual = null;
+let intervaloConsulta = null;
+let interseccionSeleccionada = "I22";
 
-//Estado de la simulacion
-let vehiculos = { ...valoresIniciales };
-let simulacionActiva = false;
-let intervalo = null;
-
-//Elemento donde aparecerán las alertas
-const listaAlertas = document.getElementById("listaAlertas");
-
-//Elemento donde aparecerán los vehículos prioritarios
-const listaPrioritarios = document.getElementById("listaPrioritarios");
-
-//Registrar un vehículo prioritario en pantalla
-function registrarPrioritario(tipo, direccion) {
-
-    const elemento = document.createElement("p");
-
-    elemento.className = "mensaje-prioritario";
-    elemento.textContent =
-        `${tipo} detectado en dirección ${direccion.toUpperCase()}`;
-
-    //Eliminar el mensaje inicial
-    const mensajeVacio = listaPrioritarios.querySelector(".mensaje-vacio");
-
-    if (mensajeVacio) {
-        mensajeVacio.remove();
-    }
-
-    //Mostrar el más reciente primero
-    listaPrioritarios.prepend(elemento);
-}
-
-function limpiarEventos() {
-
-    listaAlertas.innerHTML =
-        '<p class="mensaje-vacio">No hay alertas registradas.</p>';
-
-    listaPrioritarios.innerHTML =
-        '<p class="mensaje-vacio">No hay vehículos prioritarios registrados.</p>';
-}
-
-function registrarAlerta(mensaje) {
-
-    const alerta = document.createElement("p");
-
-    alerta.className = "mensaje-alerta";
-    alerta.textContent = mensaje;
-
-    //Eliminar el mensaje inicial
-    const mensajeVacio = listaAlertas.querySelector(".mensaje-vacio");
-
-    if (mensajeVacio) {
-        mensajeVacio.remove();
-    }
-
-    //Mostrar la alerta más reciente primero
-    listaAlertas.prepend(alerta);
-}
-
-//Elementos de la página
+//Elementos de la pagina
 const estadoSimulacion = document.getElementById("estadoSimulacion");
 const indicador = document.querySelector(".indicador");
-
 const btnIniciar = document.getElementById("btnIniciar");
 const btnPausar = document.getElementById("btnPausar");
 const btnReiniciar = document.getElementById("btnReiniciar");
 
-function actualizarPantalla() {
+const selectorInterseccion = document.getElementById("seleccionarInterseccion");
 
-    //Mostrar cantidades por dirección
-    document.getElementById("vehiculosNorte").textContent = vehiculos.norte;
-    document.getElementById("vehiculosSur").textContent = vehiculos.sur;
-    document.getElementById("vehiculosEste").textContent = vehiculos.este;
-    document.getElementById("vehiculosOeste").textContent = vehiculos.oeste;
+const listaAlertas = document.getElementById("listaAlertas");
+const listaPrioritarios = document.getElementById("listaPrioritarios");
 
-    //Calcular total de vehículos
-    const total =
-        vehiculos.norte +
-        vehiculos.sur +
-        vehiculos.este +
-        vehiculos.oeste;
+//Actualizar estado visual
+function actualizarIndicador(activa) {
+    if (activa) {
+        estadoSimulacion.textContent = "Simulación en ejecución";
+        indicador.style.backgroundColor = "#22c55e";
+        indicador.style.boxShadow = "0 0 10px #22c55e";
+    } else {
+        estadoSimulacion.textContent = "Simulación pausada";
+        indicador.style.backgroundColor = "#eab308";
+        indicador.style.boxShadow = "0 0 10px #eab308";
+    }
+}
+
+//Actualizar interseccion
+function actualizarInterseccion() {
+    if (!estadoActual || !estadoActual.red) return;
+
+    const interseccion = estadoActual.red[interseccionSeleccionada];
+
+    if (!interseccion) return;
+
+    const colas = interseccion.colas;
+
+    // Conteo de vehículos por dirección
+    document.getElementById("vehiculosNorte").textContent = colas.norte;
+    document.getElementById("vehiculosSur").textContent = colas.sur;
+    document.getElementById("vehiculosEste").textContent = colas.este;
+    document.getElementById("vehiculosOeste").textContent = colas.oeste;
+
+    // Identificador de la intersección
+    document.getElementById("numeroInterseccion").textContent =
+        interseccionSeleccionada;
+
+    // Total de vehículos de toda la red
+    let total = 0;
+
+    Object.values(estadoActual.red).forEach(cruce => {
+        Object.values(cruce.colas).forEach(cantidad => {
+            total += cantidad;
+        });
+    });
 
     document.getElementById("totalVehiculos").textContent = total;
 
-    document.getElementById("numeroInterseccion").textContent = "1";
-
-    //Determinar la dirección con más vehículos
-    const direccionVerde = Object.keys(vehiculos).reduce((mayor, direccion) => {
-        return vehiculos[direccion] > vehiculos[mayor] ? direccion : mayor;
-    });
+    //Dirección del semáforo en verde
+    const direccionVerde = interseccion.estado_semaforo.direccion;
 
     document.getElementById("direccionVerde").textContent =
-        direccionVerde.toUpperCase();
+        direccionVerde ? direccionVerde.toUpperCase() : "--";
 
-    //Actualizar los semáforos
+    //Actualizar luces de los semáforos
     const direcciones = ["norte", "sur", "este", "oeste"];
 
     direcciones.forEach(direccion => {
-
         const semaforo = document.getElementById(
             "semaforo" + direccion.charAt(0).toUpperCase() + direccion.slice(1)
         );
@@ -115,7 +81,7 @@ function actualizarPantalla() {
         luzAmarilla.classList.remove("activa");
         luzVerde.classList.remove("activa");
 
-        if (direccion === direccionVerde) {
+        if (direccionVerde === direccion) {
             luzVerde.classList.add("activa");
         } else {
             luzRoja.classList.add("activa");
@@ -123,113 +89,97 @@ function actualizarPantalla() {
     });
 }
 
-function ejecutarTurno() {
+//Consultar Backend
+async function actualizarEstado() {
+    try {
+        estadoActual = await obtenerEstadoAPI();
 
-    //Simular nuevas llegadas de vehículos
-    Object.keys(vehiculos).forEach(direccion => {
-        const llegadas = Math.floor(Math.random() * 3);
-        vehiculos[direccion] += llegadas;
-    });
+        actualizarIndicador(estadoActual.activa);
+        actualizarInterseccion();
 
-    //Identificar la dirección con más vehículos
-    const direccionVerde = Object.keys(vehiculos).reduce((mayor, direccion) => {
-        return vehiculos[direccion] > vehiculos[mayor] ? direccion : mayor;
-    });
-
-    //Permitir el paso de hasta 3 vehículos
-    const atendidos = Math.min(vehiculos[direccionVerde], 3);
-
-    vehiculos[direccionVerde] -= atendidos;
-
-    //Detectar un posible accidente (5% de probabilidad)
-    if (Math.random() < 0.05) {
-
-        const direcciones = ["norte", "sur", "este", "oeste"];
-
-        const direccionAccidente =
-            direcciones[Math.floor(Math.random() * direcciones.length)];
-
-        registrarAlerta(
-            `¡ACCIDENTE DETECTADO! Se reporta un incidente en dirección ${direccionAccidente.toUpperCase()}.`
-        );
+    } catch (error) {
+        console.error("No se pudo actualizar el estado:", error);
+        estadoSimulacion.textContent = "Error de conexión con el servidor";
+        indicador.style.backgroundColor = "#ef4444";
+        indicador.style.boxShadow = "0 0 10px #ef4444";
     }
-
-    //Detectar un posible vehículo prioritario (8% de probabilidad)
-    if (Math.random() < 0.08) {
-
-        const tiposPrioritarios = [
-            "Ambulancia",
-            "Patrulla",
-            "Camión de bomberos"
-        ];
-
-        const direcciones = ["norte", "sur", "este", "oeste"];
-
-        const tipo =
-            tiposPrioritarios[
-                Math.floor(Math.random() * tiposPrioritarios.length)
-            ];
-
-        const direccion =
-            direcciones[
-                Math.floor(Math.random() * direcciones.length)
-            ];
-
-        registrarPrioritario(tipo, direccion);
-    }
-
-    //Actualizar la interfaz
-    actualizarPantalla();
 }
 
-//Boton Iniciar
-btnIniciar.addEventListener("click", () => {
 
-    if (simulacionActiva) return;
+function iniciarConsultaAutomatica() {
+    if (intervaloConsulta !== null) return;
 
-    simulacionActiva = true;
+    actualizarEstado();
 
-    estadoSimulacion.textContent = "Simulación en ejecución";
-    indicador.style.backgroundColor = "#22c55e";
-    indicador.style.boxShadow = "0 0 10px #22c55e";
+    intervaloConsulta = setInterval(actualizarEstado, 1000);
+}
 
-    ejecutarTurno();
+function detenerConsultaAutomatica() {
+    if (intervaloConsulta !== null) {
+        clearInterval(intervaloConsulta);
+        intervaloConsulta = null;
+    }
+}
 
-    intervalo = setInterval(ejecutarTurno, 2500);
+//Boton iniciar
+btnIniciar.addEventListener("click", async () => {
+    try {
+        await iniciarSimulacionAPI();
+
+        await actualizarEstado();
+
+        iniciarConsultaAutomatica();
+
+    } catch (error) {
+        console.error("Error al iniciar la simulación:", error);
+    }
 });
 
-//Boton Pausar
-btnPausar.addEventListener("click", () => {
+//Boton pausar
+btnPausar.addEventListener("click", async () => {
+    try {
+        await pausarSimulacionAPI();
 
-    if (!simulacionActiva) return;
+        detenerConsultaAutomatica();
 
-    simulacionActiva = false;
+        await actualizarEstado();
 
-    clearInterval(intervalo);
-    intervalo = null;
-
-    estadoSimulacion.textContent = "Simulación pausada";
-    indicador.style.backgroundColor = "#eab308";
-    indicador.style.boxShadow = "0 0 10px #eab308";
+    } catch (error) {
+        console.error("Error al pausar la simulación:", error);
+    }
 });
 
-//Boton Reiniciar
-btnReiniciar.addEventListener("click", () => {
+//Boton reiniciar
+btnReiniciar.addEventListener("click", async () => {
+    try {
+        detenerConsultaAutomatica();
 
-    simulacionActiva = false;
+        await reiniciarSimulacionAPI();
 
-    clearInterval(intervalo);
-    intervalo = null;
+        limpiarEventos();
 
-    vehiculos = { ...valoresIniciales };
-    limpiarEventos();
+        await actualizarEstado();
 
-    estadoSimulacion.textContent = "Simulación detenida";
-    indicador.style.backgroundColor = "#ef4444";
-    indicador.style.boxShadow = "0 0 10px #ef4444";
-
-    actualizarPantalla();
+    } catch (error) {
+        console.error("Error al reiniciar la simulación:", error);
+    }
 });
 
-//Estado Inicial
-actualizarPantalla();
+//Kimpiar eventos
+function limpiarEventos() {
+    listaAlertas.innerHTML =
+        '<p class="mensaje-vacio">No hay alertas registradas.</p>';
+
+    listaPrioritarios.innerHTML =
+        '<p class="mensaje-vacio">No hay vehículos prioritarios registrados.</p>';
+}
+
+//Cambiar interseccion
+selectorInterseccion.addEventListener("change", () => {
+    interseccionSeleccionada = selectorInterseccion.value;
+
+    actualizarInterseccion();
+});
+
+//Inicializacion
+actualizarEstado();
