@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="UrbanFlow - Simulador inteligente de tráfico urbano">
+    <title>UrbanFlow | Traffic Control</title>
+
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+    <header class="encabezado">
+        <div class="logo">
+            <h1>Urban<span>Flow</span></h1>
+            <p>SMART TRAFFIC MANAGEMENT</p>
+        </div>
+
+        <div class="estado-sistema">
+            <span class="indicador"></span>
+            <span id="estadoSimulacion">Sistema desconectado</span>
+        </div>
+    </header>
+
+    <!--Contenido Principal-->
+    <main class="contenedor">
+
+        <section class="panel-control">
+            <div class="titulo-seccion">
+                <h2>Centro de control</h2>
+                <p>Administración de la simulación</p>
+            </div>
+
+            <div class="botones-control">
+                <button id="btnIniciar" class="btn btn-iniciar">
+                    Iniciar
+                </button>
+
+                <button id="btnPausar" class="btn btn-pausar">
+                    Pausar
+                </button>
+
+                <button id="btnReiniciar" class="btn btn-reiniciar">
+                    Reiniciar
+                </button>
+            </div>
+        </section>
+
+        <!--Informacion General-->
+        <section class="panel-resumen">
+            <div class="tarjeta-resumen">
+                <span>Intersección actual</span>
+                <strong id="numeroInterseccion">--</strong>
+            </div>
+
+            <div class="tarjeta-resumen">
+                <span>Total de vehículos</span>
+                <strong id="totalVehiculos">0</strong>
+            </div>
+
+            <div class="tarjeta-resumen">
+                <span>Semáforo en verde</span>
+                <strong id="direccionVerde">--</strong>
+            </div>
+        </section>
+
+        <section class="panel-interseccion">
+            <div class="titulo-seccion">
+                <h2>Monitoreo de intersección</h2>
+                <p>Visualización del flujo vehicular</p>
+            </div>
+
+            <div class="interseccion">
+
+                <div class="direccion norte">
+                    <h3>NORTE</h3>
+                    <p><span id="vehiculosNorte">0</span> vehículos</p>
+                    <div class="semaforo" id="semaforoNorte">
+                        <span class="luz roja"></span>
+                        <span class="luz amarilla"></span>
+                        <span class="luz verde"></span>
+                    </div>
+                </div>
+
+                <div class="direccion oeste">
+                    <h3>OESTE</h3>
+                    <p><span id="vehiculosOeste">0</span> vehículos</p>
+                    <div class="semaforo" id="semaforoOeste">
+                        <span class="luz roja"></span>
+                        <span class="luz amarilla"></span>
+                        <span class="luz verde"></span>
+                    </div>
+                </div>
+
+                <div class="centro-interseccion">
+                    <span>URBANFLOW</span>
+                    <p>INTERSECCIÓN</p>
+                </div>
+
+                <div class="direccion este">
+                    <h3>ESTE</h3>
+                    <p><span id="vehiculosEste">0</span> vehículos</p>
+                    <div class="semaforo" id="semaforoEste">
+                        <span class="luz roja"></span>
+                        <span class="luz amarilla"></span>
+                        <span class="luz verde"></span>
+                    </div>
+                </div>
+
+                <div class="direccion sur">
+                    <h3>SUR</h3>
+                    <p><span id="vehiculosSur">0</span> vehículos</p>
+                    <div class="semaforo" id="semaforoSur">
+                        <span class="luz roja"></span>
+                        <span class="luz amarilla"></span>
+                        <span class="luz verde"></span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="paneles-inferiores">
+
+            <div class="panel-alertas">
+                <h2>Alertas del sistema</h2>
+                <div id="listaAlertas">
+                    <p class="mensaje-vacio">
+                        No hay alertas registradas.
+                    </p>
+                </div>
+            </div>
+
+            <div class="panel-prioritarios">
+                <h2>Vehículos prioritarios</h2>
+                <div id="listaPrioritarios">
+                    <p class="mensaje-vacio">
+                        No hay vehículos prioritarios registrados.
+                    </p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <footer class="pie-pagina">
+        <p>UrbanFlow © 2026 | Simulación inteligente de tráfico urbano</p>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script src="js/app.js"></script>
+
+</body>
+</html>
