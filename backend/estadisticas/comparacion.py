@@ -12,26 +12,34 @@ from backend.simulacion.controlador import actualizar_semaforo
 
 DIRECCIONES = ["norte", "sur", "este", "oeste"]
 
+DURACION_SIMULACION = 36
+REPETICIONES = 10
 
-def generar_llegadas():
-    patrones = {
-        "norte": [5, 0, 3, 1, 4, 0, 2, 6, 0, 3, 1, 4],
-        "sur":   [0, 4, 1, 5, 0, 3, 2, 0, 6, 1, 4, 0],
-        "este":  [2, 1, 0, 4, 3, 2, 0, 5, 1, 0, 4, 2],
-        "oeste": [1, 3, 5, 0, 2, 4, 1, 0, 3, 5, 0, 2]
+
+def generar_escenarios():
+    escenarios = {
+        "bajo": [1, 0, 0, 0],
+        "medio": [1, 1, 0, 0],
+        "alto": [1, 1, 1, 0]
     }
 
-    llegadas = []
+    resultado = {}
 
-    for turno in range(24):
-        indice = turno % 12
+    for nombre, patron in escenarios.items():
+        llegadas = []
 
-        llegadas.append({
-            direccion: patrones[direccion][indice]
-            for direccion in DIRECCIONES
-        })
+        for turno in range(DURACION_SIMULACION):
+            nuevas_llegadas = {}
 
-    return llegadas
+            for indice, direccion in enumerate(DIRECCIONES):
+                posicion = (turno + indice) % len(patron)
+                nuevas_llegadas[direccion] = patron[posicion]
+
+            llegadas.append(nuevas_llegadas)
+
+        resultado[nombre] = llegadas
+
+    return resultado
 
 
 def simular_algoritmo(
@@ -42,36 +50,53 @@ def simular_algoritmo(
     minimo=2,
     maximo=5
 ):
-    colas = {direccion: 0 for direccion in DIRECCIONES}
-    tiempos = {direccion: 0 for direccion in DIRECCIONES}
+    colas = {
+        direccion: 0
+        for direccion in DIRECCIONES
+    }
+
+    tiempos = {
+        direccion: 0
+        for direccion in DIRECCIONES
+    }
+
+    # Guarda el turno en que llegó cada vehículo.
+    llegadas_por_direccion = {
+        direccion: []
+        for direccion in DIRECCIONES
+    }
 
     direccion_actual = None
     tiempo_verde = 0
 
-    vehiculos_atendidos = 0
     vehiculos_llegaron = 0
-    cola_maxima = 0
-
+    vehiculos_atendidos = 0
     suma_esperas = 0
-    muestras_espera = 0
+    cola_maxima = 0
 
     inicio = perf_counter()
 
     for turno, nuevas_llegadas in enumerate(llegadas, start=1):
 
-        # Incorporar nuevas llegadas
+        # 1. Registrar las nuevas llegadas.
         agregar_vehiculos(colas, nuevas_llegadas)
 
-        vehiculos_llegaron += sum(nuevas_llegadas.values())
+        for direccion, cantidad in nuevas_llegadas.items():
+            vehiculos_llegaron += cantidad
 
-        # Seleccionar el semáforo
+            llegadas_por_direccion[direccion].extend(
+                [turno] * cantidad
+            )
+
+        # 2. Seleccionar el semáforo.
         if nombre == "fijo":
+            fase = (
+                (turno - 1) // duracion_fija
+            ) % len(DIRECCIONES)
 
-            fase = ((turno - 1) // duracion_fija) % len(DIRECCIONES)
             direccion_nueva = DIRECCIONES[fase]
 
         else:
-
             direccion_nueva = actualizar_semaforo(
                 colas,
                 direccion_actual,
@@ -81,14 +106,14 @@ def simular_algoritmo(
                 maximo
             )
 
-        # Actualizar duración de la luz verde
+        # 3. Actualizar el tiempo de luz verde.
         if direccion_nueva != direccion_actual:
             direccion_actual = direccion_nueva
             tiempo_verde = 1
         else:
             tiempo_verde += 1
 
-        # Atender vehículos
+        # 4. Atender vehículos.
         atendidos = avanzar_vehiculos(
             colas,
             direccion_actual,
@@ -97,21 +122,22 @@ def simular_algoritmo(
 
         vehiculos_atendidos += atendidos
 
-        # Actualizar tiempos de espera
+        # 5. Calcular la espera de los vehículos atendidos.
+        for _ in range(atendidos):
+            turno_llegada = llegadas_por_direccion[
+                direccion_actual
+            ].pop(0)
+
+            suma_esperas += turno - turno_llegada
+
+        # 6. Actualizar los tiempos usados por el controlador.
         actualizar_tiempos_espera(
             tiempos,
             direccion_actual,
             colas
         )
 
-        # Registrar espera de las direcciones con vehículos
-        for direccion in DIRECCIONES:
-
-            if colas[direccion] > 0:
-                suma_esperas += tiempos[direccion]
-                muestras_espera += 1
-
-        # Registrar cola máxima
+        # 7. Registrar la cola máxima.
         total_cola = sum(colas.values())
 
         cola_maxima = max(
@@ -119,11 +145,19 @@ def simular_algoritmo(
             total_cola
         )
 
-    tiempo_ejecucion = (perf_counter() - inicio) * 1000
+    # 8. Calcular la espera acumulada de vehículos pendientes.
+    for direccion in DIRECCIONES:
+        for turno_llegada in llegadas_por_direccion[direccion]:
+            suma_esperas += DURACION_SIMULACION - turno_llegada
+
+    tiempo_ejecucion = (
+        perf_counter() - inicio
+    ) * 1000
 
     espera_promedio = (
-        suma_esperas / muestras_espera
-        if muestras_espera > 0 else 0
+        suma_esperas / vehiculos_llegaron
+        if vehiculos_llegaron > 0
+        else 0
     )
 
     return {
@@ -138,52 +172,95 @@ def simular_algoritmo(
     }
 
 
-def comparar_algoritmos():
+def promediar_resultados(resultados):
+    campos = [
+        "vehiculos_llegaron",
+        "vehiculos_atendidos",
+        "vehiculos_pendientes",
+        "tiempo_espera_promedio",
+        "cola_maxima",
+        "tiempo_ejecucion_ms"
+    ]
 
-    llegadas = generar_llegadas()
+    promedio = {}
 
-    resultado_fijo = simular_algoritmo(
-        "fijo",
-        llegadas
+    for campo in campos:
+        promedio[campo] = round(
+            sum(resultado[campo] for resultado in resultados)
+            / len(resultados),
+            4
+        )
+
+    promedio["turnos"] = resultados[0]["turnos"]
+
+    return promedio
+
+
+def comparar_escenario(nombre, llegadas):
+    resultados_fijos = []
+    resultados_adaptativos = []
+
+    for _ in range(REPETICIONES):
+        resultados_fijos.append(
+            simular_algoritmo("fijo", llegadas)
+        )
+
+        resultados_adaptativos.append(
+            simular_algoritmo("adaptativo", llegadas)
+        )
+
+    fijo = promediar_resultados(resultados_fijos)
+    adaptativo = promediar_resultados(resultados_adaptativos)
+
+    espera_fija = fijo["tiempo_espera_promedio"]
+    espera_adaptativa = adaptativo["tiempo_espera_promedio"]
+
+    cola_fija = fijo["cola_maxima"]
+    cola_adaptativa = adaptativo["cola_maxima"]
+
+    mejora_espera = (
+        (espera_fija - espera_adaptativa) / espera_fija * 100
+        if espera_fija > 0
+        else 0
     )
 
-    resultado_adaptativo = simular_algoritmo(
-        "adaptativo",
-        llegadas
+    mejora_cola = (
+        (cola_fija - cola_adaptativa) / cola_fija * 100
+        if cola_fija > 0
+        else 0
     )
-
-    # Calcular mejoras porcentuales
-    espera_fija = resultado_fijo["tiempo_espera_promedio"]
-    espera_adaptativa = resultado_adaptativo["tiempo_espera_promedio"]
-
-    cola_fija = resultado_fijo["cola_maxima"]
-    cola_adaptativa = resultado_adaptativo["cola_maxima"]
-
-    if espera_fija > 0:
-        mejora_espera = (
-            (espera_fija - espera_adaptativa) / espera_fija
-        ) * 100
-    else:
-        mejora_espera = 0
-
-    if cola_fija > 0:
-        mejora_cola = (
-            (cola_fija - cola_adaptativa) / cola_fija
-        ) * 100
-    else:
-        mejora_cola = 0
 
     return {
-        "condiciones": {
-            "turnos": len(llegadas),
-            "capacidad_por_turno": 3,
-            "duracion_ciclo_fijo": 3,
-            "orden_ciclo_fijo": DIRECCIONES
-        },
-        "ciclo_fijo": resultado_fijo,
-        "adaptativo": resultado_adaptativo,
+        "escenario": nombre,
+        "repeticiones": REPETICIONES,
+        "ciclo_fijo": fijo,
+        "adaptativo": adaptativo,
         "mejoras_porcentuales": {
             "reduccion_espera": round(mejora_espera, 2),
             "reduccion_cola_maxima": round(mejora_cola, 2)
         }
+    }
+
+
+def comparar_algoritmos():
+    escenarios = generar_escenarios()
+    resultados = {}
+
+    for nombre, llegadas in escenarios.items():
+        resultados[nombre] = comparar_escenario(
+            nombre,
+            llegadas
+        )
+
+    return {
+        "condiciones": {
+            "turnos_por_simulacion": DURACION_SIMULACION,
+            "repeticiones": REPETICIONES,
+            "capacidad_por_turno": 3,
+            "duracion_ciclo_fijo": 3,
+            "tiempo_minimo_adaptativo": 2,
+            "tiempo_maximo_adaptativo": 5,
+            "orden_ciclo_fijo": DIRECCIONES
+        },
+        "escenarios": resultados
     }
