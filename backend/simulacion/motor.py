@@ -24,7 +24,7 @@ def ejecutar_turno(
     agregar_vehiculos(colas, llegadas)
     
     # Verificar si hay vehículos en la intersección
-    if sum(colas.values()) == 0:
+    if (sum(colas.values()) == 0 and not estado_semaforo.get("emergencia", {}).get("activo")):
         estado_semaforo["direccion"] = None
         estado_semaforo["tiempo_verde"] = 0
 
@@ -33,7 +33,11 @@ def ejecutar_turno(
             "tiempo_verde": 0,
             "vehiculos_atendidos": 0,
             "colas": colas.copy(),
-            "tiempos_espera": tiempos.copy()
+            "tiempos_espera": tiempos.copy(),
+            "vehiculos_emergencia_atendidos": 0,
+            "tipo_emergencia": None,
+            "direccion_emergencia": None,
+            "emergencia_transferida": False
         }
 
     # 2. Consultar estado del semáforo
@@ -42,13 +46,14 @@ def ejecutar_turno(
 
     # 3. Decidir si mantener o cambiar el semáforo
     direccion_nueva = actualizar_semaforo(
-        colas,
-        direccion_anterior,
-        tiempo_anterior,
-        tiempos,
-        minimo,
-        maximo
-    )
+    colas,
+    direccion_anterior,
+    tiempo_anterior,
+    tiempos,
+    minimo,
+    maximo,
+    estado_semaforo.get("emergencia")
+)
 
     # 4. Actualizar contador de luz verde
     if direccion_nueva != direccion_anterior:
@@ -57,11 +62,39 @@ def ejecutar_turno(
     else:
         estado_semaforo["tiempo_verde"] += 1
 
+    
     # 5. Permitir el paso de vehículos
+    incidente = estado_semaforo.get("incidente", {}).get(direccion_nueva, 0)
+
+    # Calcular la capacidad disponible
+    capacidad_actual = max(0, capacidad - incidente)
+
+    # Verificar si hay un vehículo de emergencia
+    emergencia = estado_semaforo.get("emergencia")
+    emergencia_atendida = False
+    tipo_emergencia = None
+
+    if (
+        emergencia
+        and emergencia.get("activo")
+        and emergencia.get("direccion") == direccion_nueva
+        and capacidad_actual > 0
+    ):
+        emergencia_atendida = True
+        tipo_emergencia = emergencia.get("tipo")
+        estado_semaforo.pop("emergencia", None)
+
+    # La emergencia ocupa una unidad de capacidad
+    capacidad_normal = max(
+        0,
+        capacidad_actual - int(emergencia_atendida)
+    )
+
+    # Atender vehículos normales con la capacidad restante
     atendidos = avanzar_vehiculos(
         colas,
         direccion_nueva,
-        capacidad
+        capacidad_normal
     )
 
     # 6. Actualizar tiempos de espera
@@ -76,5 +109,9 @@ def ejecutar_turno(
         "tiempo_verde": estado_semaforo["tiempo_verde"],
         "vehiculos_atendidos": atendidos,
         "colas": colas.copy(),
-        "tiempos_espera": tiempos.copy()
+        "tiempos_espera": tiempos.copy(),
+        "vehiculos_emergencia_atendidos": int(emergencia_atendida),
+        "tipo_emergencia": tipo_emergencia,
+        "direccion_emergencia": direccion_nueva if emergencia_atendida else None,
+        "emergencia_transferida": False
     }

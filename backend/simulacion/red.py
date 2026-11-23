@@ -6,7 +6,11 @@ def crear_interseccion():
     return {
         "colas": {"norte": 0, "sur": 0, "este": 0, "oeste": 0},
         "tiempos": {"norte": 0, "sur": 0, "este": 0, "oeste": 0},
-        "estado_semaforo": {"direccion": None, "tiempo_verde": 0}
+        "estado_semaforo": {
+            "direccion": None,
+            "tiempo_verde": 0,
+            "incidente": {}
+        }
     }
 
 
@@ -115,10 +119,26 @@ def ejecutar_red(red, llegadas):
                     )
                     resultado["vehiculos_transferidos"] += cantidad
 
-    # Segunda fase: transferir vehículos
+        # Segunda fase: transferir vehículos normales
     for origen, destino, direccion, cantidad in movimientos:
         red[destino]["colas"][direccion] += cantidad
 
+    # Tercera fase: transferir vehículos de emergencia
+    for nombre, resultado in resultados.items():
+
+        if resultado["vehiculos_emergencia_atendidos"] > 0:
+
+            direccion = resultado["direccion_emergencia"]
+            destino = obtener_destino(nombre, direccion)
+
+            if destino is not None:
+                red[destino]["estado_semaforo"]["emergencia"] = {
+                    "direccion": direccion,
+                    "tipo": resultado["tipo_emergencia"],
+                    "activo": True
+                }
+
+                resultado["emergencia_transferida"] = True
     # Actualizar resultados con las colas finales
     for nombre in red:
         resultados[nombre]["colas"] = red[nombre]["colas"].copy()
