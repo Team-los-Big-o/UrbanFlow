@@ -89,6 +89,57 @@ function actualizarInterseccion() {
     });
 }
 
+//Actualizar estadísticas generales de la red
+function actualizarEstadisticas() {
+    if (!estadoActual || !estadoActual.estadisticas) return;
+
+    const estadisticas = estadoActual.estadisticas;
+
+    document.getElementById("totalTurnos").textContent =
+        estadisticas.turnos;
+
+    document.getElementById("vehiculosAtendidos").textContent =
+        estadisticas.vehiculos_atendidos;
+
+    document.getElementById("vehiculosTransferidos").textContent =
+        estadisticas.vehiculos_transferidos;
+
+    document.getElementById("vehiculosSalieron").textContent =
+        estadisticas.vehiculos_salieron;
+
+    document.getElementById("tiempoEspera").textContent =
+        `${estadisticas.tiempo_espera_promedio} s`;
+
+    document.getElementById("colaMaxima").textContent =
+        estadisticas.cola_maxima;
+
+    document.getElementById("mayorCongestion").textContent =
+        estadisticas.interseccion_mayor_congestion ?? "--";
+}
+
+function actualizarTablaCongestion() {
+    const tabla = document.getElementById("tablaCongestion");
+
+    if (!estadoActual || !estadoActual.red) return;
+
+    const congestion =
+        estadoActual.estadisticas?.congestion_por_interseccion ?? {};
+
+    const intersecciones = Object.keys(estadoActual.red).sort();
+
+    tabla.innerHTML = intersecciones.map(nombre => {
+        const datos = congestion[nombre] ?? {};
+
+        return `
+            <tr>
+                <td>${nombre}</td>
+                <td>${datos.cola_maxima ?? 0}</td>
+                <td>${Number(datos.cola_promedio ?? 0).toFixed(2)}</td>
+            </tr>
+        `;
+    }).join("");
+}
+
 //Consultar Backend
 async function actualizarEstado() {
     try {
@@ -96,6 +147,8 @@ async function actualizarEstado() {
 
         actualizarIndicador(estadoActual.activa);
         actualizarInterseccion();
+        actualizarEstadisticas();
+        actualizarTablaCongestion();
 
     } catch (error) {
         console.error("No se pudo actualizar el estado:", error);

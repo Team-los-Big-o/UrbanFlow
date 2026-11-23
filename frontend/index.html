@@ -65,6 +65,77 @@
             </div>
         </section>
 
+        <section class="panel-estadisticas">
+            <div class="titulo-seccion">
+                <h2>Estadísticas de la red</h2>
+                <p>Indicadores generales del tráfico urbano</p>
+            </div>
+
+            <div class="grid-estadisticas">
+
+                <div class="tarjeta-estadistica">
+                    <span>Turnos ejecutados</span>
+                    <strong id="totalTurnos">0</strong>
+                </div>
+
+                <div class="tarjeta-estadistica">
+                    <span>Vehículos atendidos</span>
+                    <strong id="vehiculosAtendidos">0</strong>
+                </div>
+
+                <div class="tarjeta-estadistica">
+                    <span>Vehículos transferidos</span>
+                    <strong id="vehiculosTransferidos">0</strong>
+                </div>
+
+                <div class="tarjeta-estadistica">
+                    <span>Vehículos que salieron</span>
+                    <strong id="vehiculosSalieron">0</strong>
+                </div>
+
+                <div class="tarjeta-estadistica">
+                    <span>Espera promedio</span>
+                    <strong id="tiempoEspera">0 s</strong>
+                </div>
+
+                <div class="tarjeta-estadistica">
+                    <span>Cola máxima</span>
+                    <strong id="colaMaxima">0</strong>
+                </div>
+
+                <div class="tarjeta-estadistica tarjeta-congestion">
+                    <span>Intersección con mayor congestión</span>
+                    <strong id="mayorCongestion">--</strong>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="panel-congestion">
+            <div class="titulo-seccion">
+                <h2>Análisis de congestión</h2>
+                <p>Comparación del tráfico en las nueve intersecciones</p>
+            </div>
+
+            <div class="tabla-congestion">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Intersección</th>
+                            <th>Cola máxima</th>
+                            <th>Cola promedio</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="tablaCongestion">
+                        <tr>
+                            <td colspan="3">Esperando datos...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
         <section class="panel-interseccion">
             <div class="titulo-seccion">
                 <h2>Monitoreo de intersección</h2>
