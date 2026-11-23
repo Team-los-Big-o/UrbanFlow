@@ -2,6 +2,8 @@
 let estadoActual = null;
 let intervaloConsulta = null;
 let interseccionSeleccionada = "I22";
+let historialCongestion = [];
+const MAX_MUESTRAS = 30;
 
 //Elementos de la pagina
 const estadoSimulacion = document.getElementById("estadoSimulacion");
@@ -183,11 +185,175 @@ function actualizarGraficaCongestion() {
     }).join("");
 }
 
+function registrarHistorialCongestion() {
+    if (!estadoActual || !estadoActual.red) return;
+
+    const turno = estadoActual.turno;
+
+    // Evitar registrar dos veces el mismo turno
+    if (
+        historialCongestion.length > 0 &&
+        historialCongestion[historialCongestion.length - 1].turno === turno
+    ) {
+        return;
+    }
+
+    const muestra = {
+        turno,
+        intersecciones: {}
+    };
+
+    Object.keys(estadoActual.red).sort().forEach(nombre => {
+        const colas = estadoActual.red[nombre].colas ?? {};
+
+        muestra.intersecciones[nombre] = Object.values(colas)
+            .reduce((total, cantidad) => total + Number(cantidad || 0), 0);
+    });
+
+    historialCongestion.push(muestra);
+
+    if (historialCongestion.length > MAX_MUESTRAS) {
+        historialCongestion.shift();
+    }
+}
+
+function actualizarGraficaHistorial() {
+    const contenedor = document.getElementById("graficaHistorial");
+
+    if (historialCongestion.length === 0) {
+        contenedor.innerHTML = "<p>Inicia la simulación para generar el historial.</p>";
+        return;
+    }
+
+    const colores = [
+        "#38bdf8", "#f59e0b", "#22c55e",
+        "#a78bfa", "#f472b6", "#eab308",
+        "#60a5fa", "#ef4444", "#2dd4bf"
+    ];
+
+    const intersecciones = Object.keys(
+        historialCongestion[0].intersecciones
+    ).sort();
+
+    const ancho = 720;
+    const alto = 260;
+    const margenIzquierdo = 45;
+    const margenDerecho = 15;
+    const margenSuperior = 15;
+    const margenInferior = 35;
+
+    const anchoGrafica = ancho - margenIzquierdo - margenDerecho;
+    const altoGrafica = alto - margenSuperior - margenInferior;
+
+    const maximo = Math.max(
+        ...historialCongestion.flatMap(muestra =>
+            Object.values(muestra.intersecciones)
+        ),
+        1
+    );
+
+    let svg = `
+        <svg viewBox="0 0 ${ancho} ${alto}" 
+             xmlns="http://www.w3.org/2000/svg">
+    `;
+
+    // Líneas horizontales y valores del eje vertical
+    for (let i = 0; i <= 4; i++) {
+        const y = margenSuperior + (altoGrafica / 4) * i;
+        const valor = Math.round(maximo * (1 - i / 4));
+
+        svg += `
+            <line x1="${margenIzquierdo}" y1="${y}"
+                  x2="${ancho - margenDerecho}" y2="${y}"
+                  stroke="#33445e" stroke-dasharray="4 4"/>
+
+            <text x="${margenIzquierdo - 10}" y="${y + 4}"
+                  fill="#8493aa" font-size="11" text-anchor="end">
+                ${valor}
+            </text>
+        `;
+    }
+
+    // Dibujar una línea por cada intersección
+    intersecciones.forEach((nombre, indice) => {
+        const puntos = historialCongestion.map((muestra, posicion) => {
+            const x = margenIzquierdo +
+                (posicion / Math.max(historialCongestion.length - 1, 1)) *
+                anchoGrafica;
+
+            const valor = muestra.intersecciones[nombre];
+            const y = margenSuperior +
+                (1 - valor / maximo) * altoGrafica;
+
+            return `${x},${y}`;
+        });
+
+        svg += `
+            <polyline
+                points="${puntos.join(" ")}"
+                fill="none"
+                stroke="${colores[indice % colores.length]}"
+                stroke-width="2.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+            />
+        `;
+
+        // Mostrar un punto en cada medición
+        historialCongestion.forEach((muestra, posicion) => {
+            const x = margenIzquierdo +
+                (posicion / Math.max(historialCongestion.length - 1, 1)) *
+                anchoGrafica;
+
+            const y = margenSuperior +
+                (1 - muestra.intersecciones[nombre] / maximo) *
+                altoGrafica;
+
+            svg += `
+                <circle cx="${x}" cy="${y}" r="3"
+                        fill="${colores[indice % colores.length]}"/>
+            `;
+        });
+    });
+
+    svg += `
+        <text x="${margenIzquierdo}" y="${alto - 8}"
+              fill="#8493aa" font-size="11">
+            Turno ${historialCongestion[0].turno}
+        </text>
+
+        <text x="${ancho - margenDerecho}" y="${alto - 8}"
+              fill="#8493aa" font-size="11" text-anchor="end">
+            Turno ${historialCongestion[historialCongestion.length - 1].turno}
+        </text>
+        </svg>
+    `;
+
+    const leyenda = intersecciones.map((nombre, indice) => `
+        <div class="elemento-leyenda">
+            <span class="punto-leyenda"
+                  style="background:${colores[indice % colores.length]}">
+            </span>
+            ${nombre}
+        </div>
+    `).join("");
+
+    contenedor.innerHTML = `
+        ${svg}
+        <div class="leyenda-historial">${leyenda}</div>
+    `;
+}
+
 //Consultar Backend
 async function actualizarEstado() {
     try {
         estadoActual = await obtenerEstadoAPI();
 
+        if (estadoActual.activa) {
+            registrarHistorialCongestion();
+        }
+
+        actualizarGraficaHistorial();
         actualizarIndicador(estadoActual.activa);
         actualizarInterseccion();
         actualizarEstadisticas();
@@ -253,6 +419,8 @@ btnReiniciar.addEventListener("click", async () => {
         detenerConsultaAutomatica();
 
         await reiniciarSimulacionAPI();
+        historialCongestion = [];
+        actualizarGraficaHistorial();
 
         limpiarEventos();
 

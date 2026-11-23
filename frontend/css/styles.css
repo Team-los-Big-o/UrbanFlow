@@ -417,6 +417,35 @@ body {
     margin-bottom: 22px;
 }
 
+/* Historial de congestión */
+.historial-congestion {
+    margin-top: 30px;
+    padding-top: 25px;
+    border-top: 1px solid #33445e;
+}
+
+.historial-congestion h3 {
+    color: #e2e8f0;
+    font-size: 17px;
+    margin-bottom: 8px;
+}
+
+.historial-congestion p {
+    color: #8493aa;
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.grafica-historial {
+    width: 100%;
+    min-height: 260px;
+    padding: 18px;
+    background: #1b2941;
+    border: 1px solid #33445e;
+    border-radius: 12px;
+    overflow-x: auto;
+}
+
 .barras-congestion {
     display: flex;
     flex-direction: column;
