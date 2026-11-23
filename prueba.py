@@ -1,56 +1,25 @@
 
-from backend.simulacion.motor import ejecutar_turno
+from pprint import pprint
 
-colas = {
-    "norte": 12,
-    "sur": 5,
-    "este": 18,
-    "oeste": 7
-}
+from backend.estadisticas.comparacion import comparar_algoritmos
 
-tiempos = {
-    "norte": 0,
-    "sur": 0,
-    "este": 0,
-    "oeste": 0
-}
 
-estado_semaforo = {
-    "direccion": None,
-    "tiempo_verde": 0
-}
+print("==========================================")
+print("       COMPARACIÓN DE ALGORITMOS")
+print("==========================================")
 
-llegadas = {
-    "norte": 2,
-    "sur": 1,
-    "este": 3,
-    "oeste": 1
-}
+resultados = comparar_algoritmos()
 
-for turno in range(1, 16):
+print("\n========== CONDICIONES DE PRUEBA ==========")
+pprint(resultados["condiciones"], sort_dicts=False)
 
-    resultado = ejecutar_turno(
-        colas,
-        llegadas,
-        tiempos,
-        estado_semaforo,
-        capacidad=3,
-        minimo=2,
-        maximo=5
-    )
+print("\n========== SEMÁFOROS DE CICLO FIJO ==========")
+pprint(resultados["ciclo_fijo"], sort_dicts=False)
 
-    print(f"\n========== TURNO {turno} ==========")
+print("\n========== SEMÁFOROS ADAPTATIVOS ==========")
+pprint(resultados["adaptativo"], sort_dicts=False)
 
-    print("Semáforo en verde:",
-          resultado["direccion_verde"].upper())
+print("\n========== MEJORAS DEL SISTEMA ADAPTATIVO ==========")
+pprint(resultados["mejoras_porcentuales"], sort_dicts=False)
 
-    print("Duración de luz verde:",
-          resultado["tiempo_verde"], "turnos")
-
-    print("Vehículos atendidos:",
-          resultado["vehiculos_atendidos"])
-
-    print("Colas:", resultado["colas"])
-
-    print("Tiempos de espera:",
-          resultado["tiempos_espera"])
+print("\n========== FIN DE LA COMPARACIÓN ==========")

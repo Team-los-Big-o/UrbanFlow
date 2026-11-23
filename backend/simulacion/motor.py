@@ -37,7 +37,8 @@ def ejecutar_turno(
             "vehiculos_emergencia_atendidos": 0,
             "tipo_emergencia": None,
             "direccion_emergencia": None,
-            "emergencia_transferida": False
+            "emergencia_transferida": False,
+            "datos_emergencia": None
         }
 
     # 2. Consultar estado del semáforo
@@ -74,6 +75,8 @@ def ejecutar_turno(
     emergencia_atendida = False
     tipo_emergencia = None
 
+    datos_emergencia = None
+
     if (
         emergencia
         and emergencia.get("activo")
@@ -82,6 +85,10 @@ def ejecutar_turno(
     ):
         emergencia_atendida = True
         tipo_emergencia = emergencia.get("tipo")
+
+        # Conservar los datos del recorrido
+        datos_emergencia = emergencia.copy()
+
         estado_semaforo.pop("emergencia", None)
 
     # La emergencia ocupa una unidad de capacidad
@@ -113,5 +120,6 @@ def ejecutar_turno(
         "vehiculos_emergencia_atendidos": int(emergencia_atendida),
         "tipo_emergencia": tipo_emergencia,
         "direccion_emergencia": direccion_nueva if emergencia_atendida else None,
-        "emergencia_transferida": False
+        "emergencia_transferida": False,
+        "datos_emergencia": datos_emergencia
     }
