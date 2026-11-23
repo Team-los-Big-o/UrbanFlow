@@ -140,6 +140,49 @@ function actualizarTablaCongestion() {
     }).join("");
 }
 
+function actualizarGraficaCongestion() {
+    const grafica = document.getElementById("graficaCongestion");
+
+    if (!estadoActual || !estadoActual.red) return;
+
+    const intersecciones = Object.keys(estadoActual.red).sort();
+
+    const datos = intersecciones.map(nombre => {
+        const colas = estadoActual.red[nombre].colas ?? {};
+
+        const totalVehiculos = Object.values(colas)
+            .reduce((total, cantidad) => total + cantidad, 0);
+
+        return {
+            nombre,
+            totalVehiculos
+        };
+    });
+
+    const maximo = Math.max(...datos.map(d => d.totalVehiculos), 1);
+
+    grafica.innerHTML = datos.map(dato => {
+        const porcentaje = (dato.totalVehiculos / maximo) * 100;
+
+        return `
+            <div class="fila-grafica">
+                <span class="nombre-interseccion">${dato.nombre}</span>
+
+                <div class="fondo-barra">
+                    <div
+                        class="barra-congestion ${dato.totalVehiculos === maximo && dato.totalVehiculos > 0 ? 'mayor-congestion' : ''}"
+                        style="width: ${porcentaje}%">
+                    </div>
+                </div>
+
+                <span class="valor-congestion">
+                    ${dato.totalVehiculos}
+                </span>
+            </div>
+        `;
+    }).join("");
+}
+
 //Consultar Backend
 async function actualizarEstado() {
     try {
@@ -149,6 +192,8 @@ async function actualizarEstado() {
         actualizarInterseccion();
         actualizarEstadisticas();
         actualizarTablaCongestion();
+        actualizarGraficaCongestion();
+    
 
     } catch (error) {
         console.error("No se pudo actualizar el estado:", error);
